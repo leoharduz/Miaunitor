@@ -2,6 +2,7 @@
 #include "pico/stdlib.h"
 #include "hardware/adc.h" // Biblioteca para usar o ADC, sensores e joystick
 #include "hardware/pwm.h" // Biblioteca para usar o PWM
+#include "hardware/gpio.h" // Interrupcoes
 
 #define CANAL_JOYSTICK_Y 1
 #define PINO_JOYSTICK_Y 27
@@ -13,12 +14,24 @@
 #define BUZZER_B 10
 #define TEMP_ALTA 40.0f // Temperatura maxima sem acionar alarme
 #define TEMP_BAIXA 29.99f // Temperatura minima sem acionar alarme
+#define BOTAO_A 5
+#define BOTAO_B 6
 
 // Variaveis globais
 uint slice_a; // Guardar valor correspondente do slice do BUZZER A
 uint slice_b; // Guardar valor correspondente do slice do BUZZER B
-uint16_t volume_buzzer_a = 0; // Variar de 0 a 5000, pelo wrap de 10000
-uint16_t volume_buzzer_b = 0; // Variar de 0 a 1000, pelo wrap de 2000
+uint16_t volume_buzzer_a = 0; // Variar de 0 a 30000, pelo wrap de 60000
+uint16_t volume_buzzer_b = 0; // Variar de 0 a 20000, pelo wrap de 40000
+volatile uint16_t ganho_volume = 50; // Para calcular o Duty do BUZZER
+
+// Incrementando ou decrementando a variavel usada para calcular o Duty, aumentando ou diminuindo o volume dos BUZZERS
+void gpio_irq_handler(uint gpio, uint32_t events) {
+    if (gpio == BOTAO_A) {
+        if (ganho_volume >= 10) ganho_volume -= 10; // Diminui 10%
+    } else if (gpio == BOTAO_B) {
+        if (ganho_volume <= 90) ganho_volume += 10; // Aumenta 10%
+    }
+}
 
 // Funcao para inicializar as saidas
 void iniciar_saidas(){
@@ -41,6 +54,18 @@ void iniciar_saidas(){
     pwm_set_wrap(slice_b, 40000); // Define a frequencia
     pwm_set_chan_level(slice_b, PWM_CHAN_A, volume_buzzer_b); // Comeca desligado (volume 0)
     pwm_set_enabled(slice_b, true);
+
+    // Inicializa o Botao A
+    gpio_init(BOTAO_A);
+    gpio_set_dir(BOTAO_A, GPIO_IN);
+    gpio_pull_up(BOTAO_A);
+    // Inicializa o Botao B
+    gpio_init(BOTAO_B);
+    gpio_set_dir(BOTAO_B, GPIO_IN);
+    gpio_pull_up(BOTAO_B);
+    // Configura interrupcoes
+    gpio_set_irq_enabled_with_callback(BOTAO_A, GPIO_IRQ_EDGE_FALL, true, &gpio_irq_handler);
+    gpio_set_irq_enabled(BOTAO_B, GPIO_IRQ_EDGE_FALL, true);
 }
 
 // Liga ou desligado o alarme
@@ -54,13 +79,14 @@ void alarme_temp_estado(bool estado, bool quente){
         gpio_put(LED_VERMELHO, 0);
         gpio_put(LED_AZUL, 1);
         }
-        volume_buzzer_a = 30000;
-        volume_buzzer_b = 0;
+        // Calcula o valor para o Duty do BUZZER, de acordo com o volume selecionado
+        volume_buzzer_a = (30000 * ganho_volume) / 100;
+        volume_buzzer_b = 0; // Pro BUZZER B fazer um efeito de bipe
         pwm_set_chan_level(slice_a, PWM_CHAN_B, volume_buzzer_a);
         pwm_set_chan_level(slice_b, PWM_CHAN_A, volume_buzzer_b);
-        sleep_ms(1000);
-        volume_buzzer_a = 30000;
-        volume_buzzer_b = 20000;
+        sleep_ms(1000); // Pro BUZZER B fazer um efeito de bipe
+        volume_buzzer_a = (30000 * ganho_volume) / 100;
+        volume_buzzer_b = (20000 * ganho_volume) / 100;
         pwm_set_chan_level(slice_a, PWM_CHAN_B, volume_buzzer_a);
         pwm_set_chan_level(slice_b, PWM_CHAN_A, volume_buzzer_b);
     }

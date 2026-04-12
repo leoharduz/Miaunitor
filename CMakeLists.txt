@@ -46,6 +46,7 @@ pico_enable_stdio_usb(miaunitor 0)
 
 # Add the standard library to the build
 target_link_libraries(miaunitor
+        hardware_gpio
         hardware_pwm
         hardware_adc
         pico_stdlib)
