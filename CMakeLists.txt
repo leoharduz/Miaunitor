@@ -35,7 +35,10 @@ pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(miaunitor miaunitor.c )
+add_executable(miaunitor 
+    miaunitor.c 
+    wifi_server.c
+)
 
 pico_set_program_name(miaunitor "miaunitor")
 pico_set_program_version(miaunitor "0.1")
@@ -46,8 +49,13 @@ pico_enable_stdio_usb(miaunitor 0)
 
 # Add the standard library to the build
 target_link_libraries(miaunitor
+        pico_stdlib
+        pico_cyw43_arch_lwip_threadsafe_background
         hardware_adc
-        pico_stdlib)
+        hardware_pwm
+        hardware_pio
+        hardware_gpio 
+)
 
 # Add the standard include files to the build
 target_include_directories(miaunitor PRIVATE
