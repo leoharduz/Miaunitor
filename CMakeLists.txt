@@ -37,6 +37,8 @@ pico_sdk_init()
 
 add_executable(miaunitor miaunitor.c )
 
+pico_generate_pio_header(miaunitor ${CMAKE_CURRENT_LIST_DIR}/ws2812.pio)
+
 pico_set_program_name(miaunitor "miaunitor")
 pico_set_program_version(miaunitor "0.1")
 
@@ -46,6 +48,7 @@ pico_enable_stdio_usb(miaunitor 0)
 
 # Add the standard library to the build
 target_link_libraries(miaunitor
+        hardware_pio
         hardware_gpio
         hardware_pwm
         hardware_adc

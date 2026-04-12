@@ -3,6 +3,7 @@
 #include "hardware/adc.h" // Biblioteca para usar o ADC, sensores e joystick
 #include "hardware/pwm.h" // Biblioteca para usar o PWM
 #include "hardware/gpio.h" // Interrupcoes
+#include "ws2812.pio.h" // Matriz de LEDs
 
 #define CANAL_JOYSTICK_Y 1
 #define PINO_JOYSTICK_Y 27
@@ -12,8 +13,8 @@
 #define LED_AZUL 12
 #define BUZZER_A 21
 #define BUZZER_B 10
-#define TEMP_ALTA 40.0f // Temperatura maxima sem acionar alarme
-#define TEMP_BAIXA 29.99f // Temperatura minima sem acionar alarme
+#define TEMP_ALTA 50.0f // Temperatura maxima sem acionar alarme
+#define TEMP_BAIXA 19.99f // Temperatura minima sem acionar alarme
 #define BOTAO_A 5
 #define BOTAO_B 6
 
@@ -24,13 +25,83 @@ uint16_t volume_buzzer_a = 0; // Variar de 0 a 30000, pelo wrap de 60000
 uint16_t volume_buzzer_b = 0; // Variar de 0 a 20000, pelo wrap de 40000
 volatile uint16_t ganho_volume = 50; // Para calcular o Duty do BUZZER
 
+// Desligar/religar matriz de LEDs
+volatile bool matriz_acesa = false;
+volatile uint32_t tempo_ultima_interacao = 0;
+
+// MATRIZ LEDs
+// Cada bloco de 5 números é uma linha (da esquerda para a direita)
+// As duas primeiras colunas são 0 para encostar o número na direita (3x5)
+const uint8_t numeros[11][25] = {
+    {0,0,1,1,1, 0,0,1,0,1, 0,0,1,0,1, 0,0,1,0,1, 0,0,1,1,1}, // 0
+    {0,0,0,0,1, 0,0,0,0,1, 0,0,0,0,1, 0,0,0,0,1, 0,0,0,0,1}, // 1 (apenas uma linha)
+    {0,0,1,1,1, 0,0,0,0,1, 0,0,1,1,1, 0,0,1,0,0, 0,0,1,1,1}, // 2
+    {0,0,1,1,1, 0,0,0,0,1, 0,0,1,1,1, 0,0,0,0,1, 0,0,1,1,1}, // 3
+    {0,0,1,0,1, 0,0,1,0,1, 0,0,1,1,1, 0,0,0,0,1, 0,0,0,0,1}, // 4
+    {0,0,1,1,1, 0,0,1,0,0, 0,0,1,1,1, 0,0,0,0,1, 0,0,1,1,1}, // 5
+    {0,0,1,1,1, 0,0,1,0,0, 0,0,1,1,1, 0,0,1,0,1, 0,0,1,1,1}, // 6
+    {0,0,1,1,1, 0,0,0,0,1, 0,0,0,1,0, 0,0,1,0,0, 0,0,1,0,0}, // 7
+    {0,0,1,1,1, 0,0,1,0,1, 0,0,1,1,1, 0,0,1,0,1, 0,0,1,1,1}, // 8
+    {0,0,1,1,1, 0,0,1,0,1, 0,0,1,1,1, 0,0,0,0,1, 0,0,1,1,1}, // 9
+    {1,0,1,1,1, 1,0,1,0,1, 1,0,1,0,1, 1,0,1,0,1, 1,0,1,1,1}  // 10 (usa tudo)
+};
+// Converte coordenadas X e Y para o índice do LED na BitDogLab (zigue-zague)
+int get_index(int x, int y) {
+    // Invertemos o X para corrigir o efeito espelho (4 - x)
+    // A lógica da serpente permanece para não embaralhar as linhas
+    if (y % 2 == 0) {
+        return (4 - y) * 5 + (4 - x); 
+    } else {
+        return (4 - y) * 5 + x;
+    }
+}
+void atualizar_matriz_volume(int nivel) {
+    uint32_t cor = 0x0000FF00; // Azul (Formato GRB)
+    
+    // Criamos um buffer temporário de 25 leds
+    uint32_t buffer[25] = {0};
+
+    // Preenche o buffer com base no desenho do número
+    for (int i = 0; i < 25; i++) {
+        int x = i % 5;
+        int y = i / 5;
+        int idx = get_index(x, y);
+        
+        if (numeros[nivel][i]) {
+            buffer[idx] = cor;
+        }
+    }
+
+    // Envia o buffer para o PIO (Pino GP07) [cite: 1]
+    for (int i = 0; i < 25; i++) {
+        pio_sm_put_blocking(pio0, 0, buffer[i] << 8u);
+    }
+}
+// MATRIZ LEDs
+
 // Incrementando ou decrementando a variavel usada para calcular o Duty, aumentando ou diminuindo o volume dos BUZZERS
 void gpio_irq_handler(uint gpio, uint32_t events) {
+    // Debounce
+    uint32_t tempo_atual = to_ms_since_boot(get_absolute_time());
+    if (tempo_atual - tempo_ultima_interacao < 200) return;
+    
+    // Acende a matriz de LEDs, caso esteja desligada, e nao muda valor de ganho_volume
+    if (!matriz_acesa) {
+        matriz_acesa = true;
+        tempo_ultima_interacao = tempo_atual;
+        atualizar_matriz_volume(ganho_volume / 10);
+        return;
+    }
+    
+    // Muda o valor de ganho_volume
     if (gpio == BOTAO_A) {
         if (ganho_volume >= 10) ganho_volume -= 10; // Diminui 10%
     } else if (gpio == BOTAO_B) {
         if (ganho_volume <= 90) ganho_volume += 10; // Aumenta 10%
     }
+
+    tempo_ultima_interacao = tempo_atual;
+    atualizar_matriz_volume(ganho_volume / 10);
 }
 
 // Funcao para inicializar as saidas
@@ -66,6 +137,10 @@ void iniciar_saidas(){
     // Configura interrupcoes
     gpio_set_irq_enabled_with_callback(BOTAO_A, GPIO_IRQ_EDGE_FALL, true, &gpio_irq_handler);
     gpio_set_irq_enabled(BOTAO_B, GPIO_IRQ_EDGE_FALL, true);
+
+    // Iniciar matriz de LEDs
+    uint offset = pio_add_program(pio0, &ws2812_program);
+    ws2812_program_init(pio0, 0, offset, 7, 800000, false);
 }
 
 // Liga ou desligado o alarme
@@ -131,6 +206,16 @@ int main() {
 
         adc_select_input(CANAL_SENSOR_INTERNO); // Seta o ADC para o sensor de temperatura interno
         uint16_t temp_raw = adc_read(); // Dá um valor inteiro referente a temperatura
+
+        // Desligar a matriz de LEDs apos 3 segundos do ultimo clique em um botao
+        uint32_t agora = to_ms_since_boot(get_absolute_time()); // 
+        if (matriz_acesa && (agora - tempo_ultima_interacao > 3000)) {
+        // Apaga a matriz enviando 25 pixels pretos (0)
+        for (int i = 0; i < 25; i++) {
+            pio_sm_put_blocking(pio0, 0, 0);
+        }
+        matriz_acesa = false;
+    }
 
         // Converter o valor inteiro para graus Celcius
         const float conversion_factor = 3.3f / (1 << 12);
