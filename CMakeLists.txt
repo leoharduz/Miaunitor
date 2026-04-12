@@ -35,7 +35,10 @@ pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(miaunitor miaunitor.c )
+add_executable(miaunitor 
+    miaunitor.c 
+    wifi_server.c
+)
 
 pico_generate_pio_header(miaunitor ${CMAKE_CURRENT_LIST_DIR}/ws2812.pio)
 
@@ -48,11 +51,14 @@ pico_enable_stdio_usb(miaunitor 0)
 
 # Add the standard library to the build
 target_link_libraries(miaunitor
-        hardware_pio
-        hardware_gpio
-        hardware_pwm
+        pico_stdlib
+        pico_cyw43_arch_lwip_threadsafe_background
+        pico_lwip_http
         hardware_adc
-        pico_stdlib)
+        hardware_pwm
+        hardware_gpio
+        hardware_pio
+)
 
 # Add the standard include files to the build
 target_include_directories(miaunitor PRIVATE
