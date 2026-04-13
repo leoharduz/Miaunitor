@@ -19,7 +19,7 @@
 #define BUZZER_A 21
 #define BUZZER_B 10
 #define TEMP_ALTA 45.0f // Temperatura maxima sem acionar alarme
-#define TEMP_BAIXA 24.99f // Temperatura minima sem acionar alarme
+#define TEMP_BAIXA 29.99f // Temperatura minima sem acionar alarme
 #define BOTAO_A 5
 #define BOTAO_B 6
 
