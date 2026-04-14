@@ -25,7 +25,7 @@ O RP2040 possui um ADC de 12 bits, o que permite uma resolução de 4096 níveis
 
 Utilizamos dois canais simultâneos. Um canal realiza a leitura do sensor térmico interno, enquanto o outro monitora a posição do Joystick. O firmware converte esses níveis digitais em grandezas físicas (Volts e Celsius) através de equações lineares.
 
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+![ADC](https://github.com/leoharduz/Miaunitor/blob/main/imagens/ADC.png?raw=true)
 
 ### • PWM
 
