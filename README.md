@@ -228,3 +228,21 @@ Essas funções são usadas para iniciar componentes, antes de serem usados.
 Laço infinito (while true) que orquestra as tarefas de tempo real sem interrupções impeditivas.
 
 ![Diagrama](https://raw.githubusercontent.com/leoharduz/Miaunitor/29ef35a14961e83b5b5f9a6b18983b93d583ab8f/imagens/ba.drawio.png)
+
+
+
+---
+
+## Licença
+
+Este projeto está sob a licença MIT. Isso significa que você é livre para usar, copiar, modificar e distribuir o software, desde que mantenha os créditos originais.
+
+---
+
+## Créditos e Ferramentas
+
+O desenvolvimento do Miaunitor só foi possível graças às seguintes tecnologias e comunidades:
+
+- Microcontrolador: Raspberry Pi Pico W (RP2040).
+- Placa de Desenvolvimento: BitDogLab, ferramenta essencial para a prototipagem de sistemas embarcados.
+- EmbarcaTech, pelo suporte e base para o desenvolvimento do projeto.
