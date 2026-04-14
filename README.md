@@ -213,4 +213,4 @@ Essas funções são usadas para iniciar componentes, antes de serem usados.
 
 Laço infinito (while true) que orquestra as tarefas de tempo real sem interrupções impeditivas.
 
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+![Diagrama](https://raw.githubusercontent.com/leoharduz/Miaunitor/29ef35a14961e83b5b5f9a6b18983b93d583ab8f/imagens/ba.drawio.png)
