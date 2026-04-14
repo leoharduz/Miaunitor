@@ -35,6 +35,12 @@ Wrap define o limite superior da contagem do hardware de PWM. Ele determina o pe
 
 Duty Cycle (Ciclo de Trabalho) é a proporção de tempo, dentro de um ciclo definido pelo Wrap, em que o sinal permanece em nível lógico alto.
 
+### • Interrupção
+
+O RP2040 possui um controlador de interrupções físico que monitora os pinos GP05 e GP06 de forma independente do processador principal.
+
+Nesse projeto ele está sendo usado nos Botões. No momento em que o botão é pressionado, o hardware envia um sinal elétrico imediato que "avisa" a CPU. Isso garante que, mesmo que o microcontrolador esteja ocupado com outros processos, a reação ao clique nos botões seja imediata e prioritária.
+
 ### • Sensor de Temperatura Interno - Canal 4 do ADC
 
 Utilizado para ler a temperatura do microcontrolador, e fazer a simulação da temperatura do ambiente.
@@ -164,7 +170,7 @@ Este módulo é o "cérebro analítico" do sistema, tratando a aquisição de da
 * adc_select_input(canal)
 * Conversão de Tensão e Temperatura
 
-//imagem////////////////////////////////////////////@@@@@@@@@
+![Fórmula](imagens/formula.png)
 
 * alarme_temp_verifica(temp_c_final): Esta função é o "vigilante" do sistema. Ela recebe o valor processado e o compara com as constantes TEMP_ALTA e TEMP_BAIXA. Se o valor estiver fora da janela, ela invoca o módulo de alarme; caso contrário, mantém o sistema em estado de repouso.
 
@@ -201,11 +207,19 @@ Este módulo é responsável por exteriorizar os dados do sistema.
 
 Essas funções são usadas para iniciar componentes, antes de serem usados.
 
-* stdio_init_all()
-* adc_init()
-* iniciar_saidas()
-* cyw43_arch_init()
-* pio_add_program e ws2812_program_init
+* stdio_init_all(): Inicializa todas as formas padrão de entrada e saída (I/O).
+* adc_init(): Liga o hardware do ADC.
+* iniciar_saidas(): Esta é a função onde foi agrupado a inicialização e configuração dos atuadores.
+* cyw43_arch_init(): Inicializa o hardware de rádio.
+* pio_add_program e ws2812_program_init: Carrega o código assembly no hardware PIO e configura o pino GP07 para enviar dados a 800kHz.
+
+
+
+## Temporizador:
+
+ Para que o sistema execute múltiplas tarefas simultâneas sem travar, utilizamos a contagem de tempo do sistema em vez de pausas absolutas (sleep_ms).
+
+ to_ms_since_boot: Esta função do SDK é usada para capturar o tempo decorrido desde o início da placa. Com ela, o sistema pode calcular intervalos (ex: 1000ms) para realizar ações sem interromper o processamento para outras.
 
 
 
